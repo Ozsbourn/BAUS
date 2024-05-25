@@ -1,0 +1,16 @@
+.posts {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 100%;
+	min-width: 50%;
+}
+
+/*.inputZone {
+	display: flex;
+	position: sticky;
+	align-items: center;
+	justify-content: center;
+	min-height: 100%;
+	min-width: 75%;
+}*/

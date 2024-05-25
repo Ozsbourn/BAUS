@@ -1,0 +1,191 @@
+generator client {
+  provider = "prisma-client-js"
+  // output   = "./generated/prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Group {
+  id          Int      @id @default(autoincrement())
+  urlName     String   @unique @db.VarChar(20)
+  name        String   @db.VarChar(100)
+  description String?  @db.VarChar(300)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  avatarUrl String      @db.VarChar(256)
+  bannerUrl String      @db.VarChar(256)
+  status    GroupStatus
+
+  users       UsersOnGroups[]
+  land        LandingPage?
+  EquityPart  EquityPart[]
+  posts  Post[] 
+  invitations Invitation[]
+
+  @@index([urlName])
+  @@map("groups")
+}
+
+// How stores equities? Should be 100% in sum for consistency of data or just recalc percentages
+//   by capitals
+// Possible way calc it by triggers/procedures, or calc it on a server side
+model EquityPart {
+  id Int @id @default(autoincrement())
+
+  groupId Int
+  group   Group @relation(fields: [groupId], references: [id])
+  userId  Int
+  user    User  @relation(fields: [userId], references: [id])
+
+  capital  Int
+  currency Currency
+
+  @@map("equityParts")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique @db.VarChar(256)
+  name      String   @db.VarChar(100)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  login     String   @unique @db.VarChar(100)
+  passHash  String   @db.VarChar(64)
+  avatarUrl String   @db.VarChar(256)
+
+  status     UserStatus
+  groups     UsersOnGroups[]
+  EquityPart EquityPart[]
+
+  @@map("users")
+}
+
+model UsersOnGroups {
+  id       Int             @id @default(autoincrement())
+  userId   Int
+  userRole UserRoleInGroup
+  groupId  Int
+  group    Group           @relation(fields: [groupId], references: [id])
+  user     User            @relation(fields: [userId], references: [id])
+
+  @@map("usersOnGroups")
+}
+
+model FlowDiagram {
+  id        Int      @id @default(autoincrement())
+  name      String   @db.VarChar(100)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  content   Json?
+
+  isDraft Boolean
+
+  @@map("flowDiagramms")
+}
+
+model LandingPage {
+  id        Int      @id @default(autoincrement())
+  name      String   @db.VarChar(100)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  content   Json?
+
+  isDraft Boolean
+
+  groupId    Int   @unique
+  ownerGroup Group @relation(fields: [groupId], references: [id])
+
+  @@map("landingPages")
+}
+
+model Post {
+  id   Int    @id @default(autoincrement())
+  label String? @db.VarChar(128)
+  text String @db.VarChar(256)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  groupId Int 
+  group  Group @relation(fields: [groupId], references: [id])
+
+  @@map("posts")
+}
+
+model Invitation {
+  id        Int             @id @default(autoincrement())
+  email     String          @db.VarChar(256)
+  role      UserRoleInGroup
+  createdAt DateTime        @default(now())
+  expires   DateTime
+  isUsed    Boolean         @default(false)
+  groupId   Int
+  group     Group           @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([email, groupId])
+  @@index([groupId])
+  @@map("invitations")
+}
+
+////////////////////////////////////////////// 
+// Entities description:
+//  
+// ACTIVE  - Full rules account
+// PENDING - Restricted 'til confirm account
+// BANNED  - Banned by rules
+// DELETED - Deleted account
+enum UserStatus {
+  ACTIVE
+  PENDING
+  BANNED
+  DELETED
+}
+
+////////////////////////////////////////////// 
+// Entities description:
+//  
+// ACTIVE  - Active group for now 
+// STOPPED - Stopped work of group (temporary)
+// DELETED - Deleted group
+enum GroupStatus {
+  ACTIVE
+  STOPPED
+  BANNED
+  DELETED
+}
+
+////////////////////////////////////////////// 
+// Entities description:
+//  
+// FOLLOWER  - Have no rules for manage group, only for follow on curr group
+// OWNER     - Full rules (maybe there are some owners for cofounders)
+// ADMIN     - Full rules w/o
+// EDITOR    - Rules for manage content deleting
+// DEVELOPER - ... (unused for now)
+// DESIGNER  - ... (unused for now)
+// ANALYST   - ... (unused for now)
+enum UserRoleInGroup {
+  FOLLOWER
+  OWNER
+  ADMIN
+  EDITOR
+  DEVELOPER
+  DESIGNER
+  ANALYST
+}
+
+enum Currency {
+  RUB
+  USD
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  DELETED
+}
